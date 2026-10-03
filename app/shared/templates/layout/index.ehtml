@@ -1,0 +1,65 @@
+import "./style.css";
+import { Cart, cartCount } from "#app/shared/cart";
+
+<Layout (cart: Cart, section: string = "", isAdmin: boolean = false)>
+  <div class="app site">
+    <p class="site-bar">Roasted Tuesdays and Fridays · Free shipping over $50</p>
+
+    <header class="site-header">
+      <div class="site-header-inner row">
+        <a href="/" class="site-brand row">
+          <span class="site-mark">
+            <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true" focusable="false">
+              <circle cx="16" cy="16" r="15" fill="currentColor"/>
+              <path d="M16 5 C10 10 10 22 16 27 C22 22 22 10 16 5 Z" fill="none" stroke="#fff" stroke-width="2"/>
+              <path d="M16 6 C13 12 19 20 16 26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          Millrow
+        </a>
+
+        <nav class="site-nav row" aria-label="Shop">
+          <a href="/collections/single-origin" class={[section === "single-origin" && "is-active"]}>Single origin</a>
+          <a href="/collections/blends" class={[section === "blends" && "is-active"]}>Blends</a>
+          <a href="/collections/gear" class={[section === "gear" && "is-active"]}>Gear</a>
+        </nav>
+
+        <div class="site-tools row">
+          <a e:if={isAdmin} href="/admin" class="is-wide-only">Admin</a>
+          <a href="/orders" class="is-wide-only">Find an order</a>
+          <a href="/cart" class="site-cart row">
+            Cart
+            <span class={["pill", cartCount(cart) > 0 && "is-accent"]}>{cartCount(cart)}</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="site-main">
+      <slot/>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer-inner">
+        <div class="site-footer-about stack is-sm">
+          <span class="site-brand">Millrow Coffee</span>
+          <p>A small roastery in an old textile mill. We roast twice a week in small batches and ship the same day.</p>
+        </div>
+
+        <div class="stack is-sm">
+          <h2>Shop</h2>
+          <a href="/collections/single-origin">Single origin</a>
+          <a href="/collections/blends">Blends</a>
+          <a href="/collections/gear">Gear</a>
+        </div>
+
+        <div class="stack is-sm">
+          <h2>Orders</h2>
+          <a href="/orders" class="is-wide-only">Find an order</a>
+          <a href="/cart">Cart</a>
+          <a href="/signin">Staff sign in</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</Layout>

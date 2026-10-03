@@ -1,0 +1,61 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/admin.css";
+
+.product-thumb {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--bg-muted);
+}
+
+.product-cell {
+  gap: var(--space-3);
+}
+
+.stock-low {
+  color: var(--warning-ink);
+  font-weight: var(--weight-medium);
+}
+
+.stock-out {
+  color: var(--danger-ink);
+  font-weight: var(--weight-medium);
+}
+
+.new-product {
+  gap: var(--space-2);
+}
+
+.new-product input {
+  width: 16rem;
+}
+
+.product-cell strong {
+  white-space: nowrap;
+}
+
+@media (max-width: 30rem) {
+  .new-product {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .new-product input {
+    width: 100%;
+  }
+
+  .new-product select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.product-cell > * {
+  flex-shrink: 0;
+}
+
+.new-product button {
+  white-space: nowrap;
+}

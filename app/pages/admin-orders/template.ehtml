@@ -1,0 +1,108 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import type { LiveView } from "@elements/app";
+import { AdminLayout } from "#app/shared/templates/admin-layout";
+import { OrderRow, statusIntent } from "#app/shared/services/orders";
+import { money } from "#app/shared/money";
+
+interface Filter {
+  status: string;
+  query: string;
+}
+
+const TABS = [
+  { key: "all", label: "All" },
+  { key: "paid", label: "Paid" },
+  { key: "shipped", label: "Shipped" },
+  { key: "refunded", label: "Refunded" },
+];
+
+function matches(o: OrderRow, f: Filter): boolean {
+  let q = f.query.trim().toLowerCase().replace(/^#/, "");
+
+  return (f.status === "all" || o.status === f.status)
+    && (!q || String(o.number).includes(q) || o.name.toLowerCase().includes(q) || o.email.toLowerCase().includes(q));
+}
+
+function visible(orders: LiveView<OrderRow>, f: Filter): OrderRow[] {
+  return orders.filter((o) => matches(o, f)).sort((a, b) => b.number - a.number);
+}
+
+function count(orders: LiveView<OrderRow>, status: string): number {
+  return status === "all" ? orders.length : orders.filter((o) => o.status === status).length;
+}
+
+function onTab(f: Filter, key: string) {
+  f.status = key;
+  history.replaceState(null, "", key === "all" ? "/admin/orders" : `/admin/orders?status=${key}`);
+}
+
+function placed(d: Date): string {
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+<html lang="en" class="page-admin-orders" (
+  orders: LiveView<OrderRow>,
+  initialStatus: string,
+  private filter: Filter = { status: initialStatus, query: "" },
+)>
+  <head>
+    <title>Orders · Millrow admin</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <AdminLayout section="orders">
+      <div class="admin-title row">
+        <h1>Orders</h1>
+        <span class="pill is-success"><span class="pill-dot"></span>Live</span>
+      </div>
+
+      <div class="admin-toolbar row">
+        <div class="tabs">
+          <div class="tab-list" role="tablist">
+            <button e:for={t of TABS}
+                    type="button"
+                    role="tab"
+                    aria-selected={filter.status === t.key}
+                    class={["tab", filter.status === t.key && "is-active"]}
+                    onclick={() => onTab(filter, t.key)}>
+              {t.label}<span class="tab-count">{count(orders, t.key)}</span>
+            </button>
+          </div>
+        </div>
+        <input type="search" placeholder="Search number, name or email" value={filter.query} aria-label="Search orders">
+      </div>
+
+      <div class="card">
+        <table e:if={visible(orders, filter).length > 0} class="admin-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Placed</th>
+              <th>Customer</th>
+              <th>Ship to</th>
+              <th>Status</th>
+              <th class="num">Items</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr e:for={o of visible(orders, filter)} class={[Date.now() - +o.createdAt < 60000 && "is-new"]}>
+              <td><a href={`/admin/orders/${o.id}`}><strong>#{o.number}</strong></a></td>
+              <td class="muted">{placed(o.createdAt)}</td>
+              <td>{o.name}<br><span class="muted">{o.email}</span></td>
+              <td class="muted">{o.city}, {o.region}</td>
+              <td>
+                <span class={["pill", statusIntent(o.status)]}>{o.status}</span>
+              </td>
+              <td class="num">{o.itemCount}</td>
+              <td class="num">{money(o.totalCents)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p e:else class="admin-empty">No orders match.</p>
+      </div>
+    </AdminLayout>
+  </body>
+</html>

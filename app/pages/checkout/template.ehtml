@@ -1,0 +1,160 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { FieldErrors, ValidationError, redirect } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Cart, loadCart } from "#app/shared/cart";
+import { PricedCart, priceCart } from "#app/shared/services/cart";
+import { photoUrl } from "#app/shared/services/catalog";
+import { CheckoutForm, placeOrder } from "#app/shared/checkout";
+import { money } from "#app/shared/money";
+
+/** @rpc */
+export async function checkout(form: CheckoutForm): Promise<string> {
+  return await placeOrder(form);
+}
+
+interface CheckoutState {
+  loaded: boolean;
+  priced: PricedCart;
+  errors: FieldErrors<CheckoutForm>;
+  error: string;
+  busy: boolean;
+}
+
+function setup(cart: Cart, state: CheckoutState) {
+  loadCart(cart);
+  state.priced = priceCart(cart.lines);
+  state.loaded = true;
+}
+
+async function onSubmit(cart: Cart, form: CheckoutForm, state: CheckoutState) {
+  state.busy = true;
+  state.error = "";
+  state.errors = {};
+
+  try {
+    let url = await checkout({ ...form, lines: cart.lines });
+    redirect(url);
+  } catch (err: any) {
+    state.busy = false;
+
+    if (err instanceof ValidationError && err.errors && Object.keys(err.errors).length > 0) {
+      state.errors = err.errors;
+    } else {
+      state.error = err.message ?? "Something went wrong. Try again.";
+    }
+  }
+}
+
+function fieldError(state: CheckoutState, key: keyof CheckoutForm): string {
+  return state.errors[key]?.[0] ?? "";
+}
+
+<html lang="en" class="page-checkout" (
+  testMode: boolean,
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+  private form: CheckoutForm = { email: "", name: "", address1: "", address2: "", city: "", region: "", postalCode: "", lines: [] },
+  private state: CheckoutState = {
+    loaded: false,
+    priced: { lines: [], subtotalCents: 0, shippingCents: 0, totalCents: 0, itemCount: 0 },
+    errors: {},
+    error: "",
+    busy: false,
+  },
+) oninit={() => setup(cart, state)}>
+  <head>
+    <title>Checkout · Millrow Coffee</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin}>
+      <div class="stack is-xl">
+        <h1 class="page-title">Checkout</h1>
+
+        <div e:if={state.loaded && state.priced.lines.length === 0} class="stack">
+          <p class="lede">Your cart is empty.</p>
+          <p><a href="/" class="button is-primary">Back to the shop</a></p>
+        </div>
+
+        <div e:else class="checkout-layout">
+          <form class="checkout-form stack is-xl" onsubmit={() => onSubmit(cart, form, state)} novalidate>
+            <p e:if={state.error} class="callout is-danger" role="alert">{state.error}</p>
+
+            <fieldset>
+              <legend>Contact</legend>
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck={false}
+                       value={form.email} class={[fieldError(state, "email") && "is-error"]} placeholder="you@example.com">
+                <p class="hint" e:if={!fieldError(state, "email")}>For your receipt and tracking. No account needed.</p>
+                <p class="error" e:else>{fieldError(state, "email")}</p>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Shipping address</legend>
+              <div class="field">
+                <label for="name">Full name</label>
+                <input id="name" name="name" autocomplete="name" value={form.name} class={[fieldError(state, "name") && "is-error"]}>
+                <p e:if={fieldError(state, "name")} class="error">{fieldError(state, "name")}</p>
+              </div>
+              <div class="field">
+                <label for="address1">Street address</label>
+                <input id="address1" name="address1" autocomplete="address-line1" value={form.address1} class={[fieldError(state, "address1") && "is-error"]}>
+                <p e:if={fieldError(state, "address1")} class="error">{fieldError(state, "address1")}</p>
+              </div>
+              <div class="field">
+                <label for="address2">Apartment, suite <span class="text-sm">(optional)</span></label>
+                <input id="address2" name="address2" autocomplete="address-line2" value={form.address2}>
+              </div>
+              <div class="field is-third">
+                <label for="city">City</label>
+                <input id="city" name="city" autocomplete="address-level2" value={form.city} class={[fieldError(state, "city") && "is-error"]}>
+                <p e:if={fieldError(state, "city")} class="error">{fieldError(state, "city")}</p>
+              </div>
+              <div class="field is-third">
+                <label for="region">State</label>
+                <input id="region" name="region" autocomplete="address-level1" maxlength="2" placeholder="OR" value={form.region}>
+              </div>
+              <div class="field is-third">
+                <label for="postalCode">ZIP code</label>
+                <input id="postalCode" name="postalCode" autocomplete="postal-code" inputmode="numeric" value={form.postalCode} class={[fieldError(state, "postalCode") && "is-error"]}>
+                <p e:if={fieldError(state, "postalCode")} class="error">{fieldError(state, "postalCode")}</p>
+              </div>
+            </fieldset>
+
+            <div class="stack is-sm">
+              <button type="submit" class="is-primary is-lg is-block" disabled={state.busy || !state.loaded}>
+                {state.busy ? "Opening secure checkout…" : `Pay ${money(state.priced.totalCents)}`}
+              </button>
+              <p e:if={testMode} class="checkout-pay-note">Test mode: the next page confirms the order without a card.</p>
+              <p e:else class="checkout-pay-note">You will enter your card on Stripe's secure checkout page. We never see your card number.</p>
+            </div>
+          </form>
+
+          <aside class="order-summary checkout-summary stack">
+            <h2>Order</h2>
+            <ul class="checkout-lines stack">
+              <li e:for={line of state.priced.lines} class="line-item">
+                <img e:if={line.photoId} src={photoUrl({ id: line.photoId!, hash: line.photoHash! })} alt="" width="56" height="56">
+                <span e:else></span>
+                <div class="stack is-xs">
+                  <span class="line-item-name">{line.productName}</span>
+                  <span class="line-item-meta">{line.label} · Qty {line.quantity}</span>
+                </div>
+                <span class="line-item-amount">{money(line.unitCents * line.quantity)}</span>
+              </li>
+            </ul>
+            <div class="stack is-sm">
+              <div class="summary-row row"><span>Subtotal</span><span>{money(state.priced.subtotalCents)}</span></div>
+              <div class="summary-row row"><span>Shipping</span><span>{state.priced.shippingCents === 0 ? "Free" : money(state.priced.shippingCents)}</span></div>
+              <div class="summary-row row is-total"><span>Total</span><span>{money(state.priced.totalCents)}</span></div>
+            </div>
+            <a href="/cart" class="text-sm">Edit cart</a>
+          </aside>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

@@ -1,0 +1,33 @@
+import "./style.css";
+import { OrderDetail } from "#app/shared/services/orders";
+import { money } from "#app/shared/money";
+
+<OrderLines (detail: OrderDetail)>
+  <table class="lines" role="presentation">
+    <tr e:for={item of detail.items}>
+      <td>
+        {item.productName}<br>
+        <span class="muted">{item.variantLabel} · Qty {item.quantity}</span>
+      </td>
+      <td class="amount">{money(item.unitCents * item.quantity)}</td>
+    </tr>
+    <tr>
+      <td class="muted">Shipping</td>
+      <td class="amount muted">{detail.order.shippingCents === 0 ? "Free" : money(detail.order.shippingCents)}</td>
+    </tr>
+    <tr class="total">
+      <td>Total</td>
+      <td class="amount">{money(detail.order.totalCents)}</td>
+    </tr>
+  </table>
+</OrderLines>
+
+<ShipTo (detail: OrderDetail)>
+  <div class="panel">
+    <strong>Shipping to</strong><br>
+    {detail.order.name}<br>
+    {detail.order.address1}<br>
+    <span e:if={detail.order.address2}>{detail.order.address2}<br></span>
+    {detail.order.city}, {detail.order.region} {detail.order.postalCode}
+  </div>
+</ShipTo>

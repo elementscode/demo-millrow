@@ -1,0 +1,52 @@
+.email .brand {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  color: #3b1d12;
+  margin: 0 0 24px;
+}
+
+.email .lines {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.email .lines td {
+  padding: 10px 0;
+  border-bottom: 1px solid #ece7e2;
+  vertical-align: top;
+  font-size: 15px;
+}
+
+.email .lines .amount {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.email .lines .muted,
+.email .muted {
+  color: #6b625c;
+  font-size: 14px;
+}
+
+.email .lines .total td {
+  border-bottom: 0;
+  font-weight: 600;
+}
+
+.email .button {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 6px;
+  background: #a2482a;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.email .panel {
+  padding: 16px;
+  border-radius: 8px;
+  background: #faf6f2;
+  margin: 16px 0;
+}

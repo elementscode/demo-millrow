@@ -1,0 +1,129 @@
+@import "#app/shared/styles/page.css";
+
+.shop-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+  gap: var(--space-12);
+  padding-block: var(--space-6) var(--space-16);
+}
+
+.shop-hero h1 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-regular);
+  font-size: clamp(var(--text-4xl), 5.5vw, var(--text-7xl));
+  line-height: 1.02;
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+
+.shop-hero-art {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.shop-hero-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-xl);
+}
+
+.shop-hero-art img:nth-child(2) {
+  margin-top: var(--space-12);
+}
+
+.shop-section {
+  padding-block: var(--space-12);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.shop-section-head {
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.shop-section h2 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-3xl);
+}
+
+.collection-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.collection-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-8);
+  min-height: 14rem;
+  padding: var(--space-7);
+  border-radius: var(--radius-xl);
+  background: var(--brand-50);
+  color: var(--ink);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+
+.collection-tile:nth-child(2) {
+  background: var(--brand-100);
+}
+
+.collection-tile:nth-child(3) {
+  background: var(--brand-900);
+  color: var(--brand-50);
+}
+
+.collection-tile:nth-child(3) p {
+  color: var(--brand-200);
+}
+
+.collection-tile h3 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-2xl);
+}
+
+.collection-tile p {
+  color: var(--ink-soft);
+}
+
+.collection-tile-link {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.roast-notes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-10);
+}
+
+.roast-notes h3 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-xl);
+}
+
+.roast-notes p {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 56rem) {
+  .shop-hero,
+  .collection-tiles,
+  .roast-notes {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-hero {
+    gap: var(--space-8);
+    padding-block: 0 var(--space-10);
+  }
+}

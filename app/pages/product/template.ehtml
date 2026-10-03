@@ -1,0 +1,182 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { LiveView } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Photo, Product, Variant, photoUrl } from "#app/shared/services/catalog";
+import { Cart, addToCart, loadCart } from "#app/shared/cart";
+import { price } from "#app/shared/money";
+
+interface Selection {
+  size: string;
+  grind: string;
+  quantity: number;
+  photo: number;
+  added: string;
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function ordered(variants: LiveView<Variant>): Variant[] {
+  return variants.sort((a, b) => a.position - b.position);
+}
+
+function sizes(variants: LiveView<Variant>): string[] {
+  return unique(ordered(variants).map((v) => v.size));
+}
+
+function grinds(variants: LiveView<Variant>): string[] {
+  return unique(ordered(variants).map((v) => v.grind));
+}
+
+function selected(variants: LiveView<Variant>, sel: Selection): Variant | undefined {
+  return variants.find((v) => v.size === sel.size && v.grind === sel.grind);
+}
+
+function stockFor(variants: LiveView<Variant>, size: string, grind: string): number {
+  return variants.find((v) => v.size === size && v.grind === grind)?.stock ?? 0;
+}
+
+function sizeFrom(variants: LiveView<Variant>, size: string): number {
+  return Math.min(...variants.filter((v) => v.size === size).map((v) => v.priceCents));
+}
+
+function stockMessage(v: Variant | undefined): string {
+  if (!v || v.stock === 0) {
+    return "Sold out. We restock after the next roast.";
+  }
+
+  if (v.stock <= 5) {
+    return `Only ${v.stock} left`;
+  }
+
+  return "In stock, ships next roast day";
+}
+
+function onPick(sel: Selection, size: string, grind: string) {
+  sel.size = size;
+  sel.grind = grind;
+  sel.added = "";
+}
+
+function onAdd(cart: Cart, variants: LiveView<Variant>, sel: Selection) {
+  let v = selected(variants, sel);
+
+  if (!v || v.stock === 0) {
+    return;
+  }
+
+  let quantity = Math.max(1, Math.min(Math.floor(sel.quantity) || 1, v.stock));
+  addToCart(cart, v.id, quantity);
+  sel.added = `${quantity} added to your cart`;
+  sel.quantity = 1;
+}
+
+<html lang="en" class="page-product" (
+  product: Product,
+  collection: { slug: string; name: string },
+  photos: Photo[],
+  variants: LiveView<Variant>,
+  initialSize: string,
+  initialGrind: string,
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+  private sel: Selection = { size: initialSize, grind: initialGrind, quantity: 1, photo: 0, added: "" },
+) oninit={() => loadCart(cart)}>
+  <head>
+    <title>{product.name} · Millrow Coffee</title>
+    <meta name="description" content={product.description}>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin} section={collection.slug}>
+      <nav class="product-crumbs row" aria-label="Breadcrumb">
+        <a href="/">Shop</a>
+        <span>/</span>
+        <a href={`/collections/${collection.slug}`}>{collection.name}</a>
+      </nav>
+
+      <div class="product-layout">
+        <div class="product-gallery">
+          <img e:if={photos.length > 0}
+               class="product-gallery-main"
+               src={photoUrl(photos[sel.photo] ?? photos[0])}
+               alt={(photos[sel.photo] ?? photos[0]).alt}
+               width="800" height="800">
+
+          <div e:if={photos.length > 1} class="product-thumbs">
+            <button e:for={[i, p] of photos.entries()}
+                    type="button"
+                    class={["product-thumb", sel.photo === i && "is-active"]}
+                    aria-label={`Show photo ${i + 1}`}
+                    onclick={() => sel.photo = i}>
+              <img src={photoUrl(p)} alt="" width="88" height="88">
+            </button>
+          </div>
+        </div>
+
+        <div class="product-info stack is-lg">
+          <div class="stack is-sm">
+            <p class="eyebrow">{collection.name}</p>
+            <h1>{product.name}</h1>
+            <p e:if={product.notes} class="product-notes">{product.notes}</p>
+          </div>
+
+          <span class="product-price">{price(selected(variants, sel)?.priceCents ?? 0)}</span>
+
+          <p>{product.description}</p>
+
+          <fieldset class="option-group">
+            <legend>{grinds(variants).length > 0 ? "Size" : "Option"}</legend>
+            <div class="option-choices cluster">
+              <button e:for={s of sizes(variants)}
+                      type="button"
+                      class={[sel.size === s && "is-selected"]}
+                      onclick={() => onPick(sel, s, sel.grind)}>
+                {s}<span e:if={grinds(variants).length > 0} class="text-sm">&nbsp;· {price(sizeFrom(variants, s))}</span>
+              </button>
+            </div>
+          </fieldset>
+
+          <fieldset e:if={grinds(variants).length > 0} class="option-group">
+            <legend>Grind</legend>
+            <div class="option-choices cluster">
+              <button e:for={g of grinds(variants)}
+                      type="button"
+                      class={[sel.grind === g && "is-selected", stockFor(variants, sel.size, g) === 0 && "is-out"]}
+                      onclick={() => onPick(sel, sel.size, g)}>
+                {g}
+              </button>
+            </div>
+          </fieldset>
+
+          <div class="stack is-sm">
+            <form class="product-buy row" onsubmit={() => onAdd(cart, variants, sel)}>
+              <input type="number" min="1" max="99" value={sel.quantity} aria-label="Quantity">
+              <button type="submit" class="is-primary is-lg" disabled={(selected(variants, sel)?.stock ?? 0) === 0}>
+                {(selected(variants, sel)?.stock ?? 0) === 0 ? "Sold out" : "Add to cart"}
+              </button>
+            </form>
+
+            <p e:if={sel.added} class="callout is-success" role="status">
+              {sel.added}. <a href="/cart">View cart and check out →</a>
+            </p>
+            <p e:else class={["product-stock", (selected(variants, sel)?.stock ?? 0) > 0 && (selected(variants, sel)?.stock ?? 0) <= 5 && "is-low"]}>
+              {stockMessage(selected(variants, sel))}
+            </p>
+          </div>
+
+          <dl e:if={product.origin || product.process || product.roast} class="product-facts">
+            <dt e:if={product.origin}>Origin</dt>
+            <dd e:if={product.origin}>{product.origin}</dd>
+            <dt e:if={product.process}>Process</dt>
+            <dd e:if={product.process}>{product.process}</dd>
+            <dt e:if={product.roast}>Roast</dt>
+            <dd e:if={product.roast}>{product.roast}</dd>
+          </dl>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

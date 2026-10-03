@@ -1,0 +1,72 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/summary.css";
+
+.test-checkout {
+  max-width: 34rem;
+  margin-inline: auto;
+}
+
+.test-checkout-head {
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.test-checkout-total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.test-checkout-total-label {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.test-checkout-total-amount {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.test-checkout-lines {
+  gap: var(--space-4);
+}
+
+.test-checkout-lines .line-item {
+  grid-template-columns: 3.5rem 1fr auto;
+}
+
+.test-checkout-lines .line-item img {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.test-checkout-lines .line-item-name {
+  font-size: var(--text-base);
+}
+
+.test-checkout-cancel {
+  align-self: center;
+  font-size: var(--text-sm);
+}
+
+.test-checkout-note {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+@media (max-width: 30rem) {
+  .test-checkout-head {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+  }
+}
+
+.test-checkout .page-title {
+  font-size: clamp(var(--text-3xl), 4vw, var(--text-4xl));
+}

@@ -1,0 +1,82 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { ProductCard } from "#app/shared/templates/product-card";
+import { Collection, ProductCard as ProductCardData, cardPhotoUrl } from "#app/shared/services/catalog";
+import { Cart, loadCart } from "#app/shared/cart";
+
+<html lang="en" class="page-home" (
+  collections: Collection[],
+  featured: ProductCardData[],
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+) oninit={() => loadCart(cart)}>
+  <head>
+    <title>Millrow Coffee · Small-batch coffee roasters</title>
+    <meta name="description" content="Single origin coffees, house blends and brewing gear from Millrow, a small-batch roastery.">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin}>
+      <section class="shop-hero">
+        <div class="stack is-lg">
+          <p class="eyebrow">Small-batch roasters</p>
+          <h1>Coffee roasted twice a week in an old river mill.</h1>
+          <p class="lede">We buy green coffee from farms we know, roast it in fifteen kilo batches, and ship it the day it comes out of the cooler.</p>
+          <div class="cluster">
+            <a href="/collections/single-origin" class="button is-primary is-lg">Shop single origin</a>
+            <a href="/collections/blends" class="button is-ghost is-lg">House blends</a>
+          </div>
+        </div>
+
+        <div class="shop-hero-art">
+          <img e:for={p of featured.slice(0, 2)} src={cardPhotoUrl(p)} alt={p.photoAlt ?? p.name} width="600" height="600">
+        </div>
+      </section>
+
+      <section class="shop-section stack is-xl">
+        <div class="shop-section-head row">
+          <h2>Shop by collection</h2>
+        </div>
+
+        <div class="collection-tiles">
+          <a e:for={c of collections} class="collection-tile" href={`/collections/${c.slug}`}>
+            <div class="stack is-sm">
+              <h3>{c.name}</h3>
+              <p>{c.tagline}</p>
+            </div>
+            <span class="collection-tile-link">Shop {c.name.toLowerCase()} →</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="shop-section stack is-xl">
+        <div class="shop-section-head row">
+          <h2>On the bar this week</h2>
+          <a href="/collections/single-origin">See all coffee</a>
+        </div>
+
+        <div class="product-grid">
+          <ProductCard e:for={p of featured} product={p} />
+        </div>
+      </section>
+
+      <section class="shop-section">
+        <div class="roast-notes">
+          <div class="stack is-sm">
+            <h3>Roasted to order</h3>
+            <p>Order by Monday or Thursday night and your coffee is roasted the next morning.</p>
+          </div>
+          <div class="stack is-sm">
+            <h3>Ground how you brew</h3>
+            <p>Whole bean, drip or espresso. Tell us your brewer and we will set the burrs for it.</p>
+          </div>
+          <div class="stack is-sm">
+            <h3>Shipped the same day</h3>
+            <p>Every order ships with tracking. Free over $50, and $6 flat under that.</p>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  </body>
+</html>
