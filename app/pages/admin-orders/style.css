@@ -1,0 +1,19 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/admin.css";
+
+.tab-list button.tab {
+  background: none;
+  border-radius: 0;
+  height: auto;
+}
+
+.admin-toolbar .tabs {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 30rem) {
+  .admin-toolbar input[type="search"] {
+    width: 100%;
+  }
+}

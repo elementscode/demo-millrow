@@ -1,0 +1,120 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { Cart, clearCart, loadCart } from "#app/shared/cart";
+import { OrderDetail, OrderStatus, carrierUrl, statusIntent, statusLabel } from "#app/shared/services/orders";
+import { photoUrl } from "#app/shared/services/catalog";
+import { money } from "#app/shared/money";
+
+function setup(cart: Cart, placed: boolean) {
+  loadCart(cart);
+
+  if (placed) {
+    clearCart(cart);
+  }
+}
+
+function reached(status: OrderStatus, step: "paid" | "roasting" | "shipped"): boolean {
+  switch (step) {
+    case "paid":
+      return status === "paid" || status === "shipped";
+
+    case "roasting":
+      return status === "paid" || status === "shipped";
+
+    default:
+      return status === "shipped";
+  }
+}
+
+function formatDate(d: Date | null): string {
+  return d ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "";
+}
+
+<html lang="en" class="page-order" (
+  detail: OrderDetail,
+  placed: boolean,
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+) oninit={() => setup(cart, placed)}>
+  <head>
+    <title>Order #{detail.order.number} · Millrow Coffee</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin}>
+      <div class="order-page stack is-xl">
+        <div e:if={placed && detail.order.status !== "pending"} class="callout is-success">
+          <p class="callout-title">Thank you, {detail.order.name.split(" ")[0]}.</p>
+          <p>Your order is paid. A receipt is on its way to {detail.order.email}.</p>
+        </div>
+
+        <div e:if={detail.order.status === "pending"} class="callout is-info">
+          <p>We are waiting for Stripe to confirm your payment. This page updates once it does; reload in a minute.</p>
+        </div>
+
+        <div class="order-head row">
+          <div class="stack is-xs">
+            <p class="eyebrow">Placed {formatDate(detail.order.createdAt)}</p>
+            <h1 class="page-title">Order #{detail.order.number}</h1>
+          </div>
+          <span class={["pill", statusIntent(detail.order.status)]}><span class="pill-dot"></span>{statusLabel(detail.order.status)}</span>
+        </div>
+
+        <div e:if={detail.order.status !== "refunded" && detail.order.status !== "cancelled"} class="order-steps">
+          <div class={["order-step", reached(detail.order.status, "paid") && "is-done"]}>Paid</div>
+          <div class={["order-step", reached(detail.order.status, "roasting") && "is-done"]}>Roasting</div>
+          <div class={["order-step", reached(detail.order.status, "shipped") && "is-done"]}>Shipped</div>
+        </div>
+
+        <div e:if={detail.order.trackingNumber} class="callout">
+          <p class="callout-title">Shipped {formatDate(detail.order.shippedAt)} with {detail.order.carrier}</p>
+          <p>Tracking <a href={carrierUrl(detail.order.carrier, detail.order.trackingNumber)} target="_blank" rel="noopener">{detail.order.trackingNumber}</a></p>
+        </div>
+
+        <div class="order-summary stack is-lg">
+          <ul class="order-items stack">
+            <li e:for={item of detail.items} class="line-item">
+              <img e:if={item.photoId} src={photoUrl({ id: item.photoId!, hash: item.photoHash! })} alt="" width="72" height="72">
+              <span e:else></span>
+              <div class="stack is-xs">
+                <a e:if={item.slug} class="line-item-name" href={`/products/${item.slug}`}>{item.productName}</a>
+                <span e:else class="line-item-name">{item.productName}</span>
+                <span class="line-item-meta">{item.variantLabel} · Qty {item.quantity}</span>
+              </div>
+              <span class="line-item-amount">{money(item.unitCents * item.quantity)}</span>
+            </li>
+          </ul>
+
+          <div class="stack is-sm">
+            <div class="summary-row row"><span>Subtotal</span><span>{money(detail.order.subtotalCents)}</span></div>
+            <div class="summary-row row"><span>Shipping</span><span>{detail.order.shippingCents === 0 ? "Free" : money(detail.order.shippingCents)}</span></div>
+            <div class="summary-row row is-total"><span>Total</span><span>{money(detail.order.totalCents)}</span></div>
+          </div>
+        </div>
+
+        <div class="order-grid">
+          <div class="card">
+            <div class="card-head"><h2>Shipping to</h2></div>
+            <div class="card-body">
+              <address>
+                {detail.order.name}<br>
+                {detail.order.address1}<br>
+                <span e:if={detail.order.address2}>{detail.order.address2}<br></span>
+                {detail.order.city}, {detail.order.region} {detail.order.postalCode}
+              </address>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Contact</h2></div>
+            <div class="card-body stack is-sm">
+              <span>{detail.order.email}</span>
+              <span class="text-sm">Bookmark this page, or find it again with your email and order number.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

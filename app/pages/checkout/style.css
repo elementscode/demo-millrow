@@ -1,0 +1,75 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/summary.css";
+
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr 24rem;
+  gap: var(--space-12);
+  align-items: start;
+}
+
+.checkout-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-4);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.checkout-form legend {
+  grid-column: 1 / -1;
+  margin-bottom: var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--ink);
+}
+
+.checkout-form .field {
+  grid-column: span 6;
+}
+
+.checkout-form .field.is-half {
+  grid-column: span 3;
+}
+
+.checkout-form .field.is-third {
+  grid-column: span 2;
+}
+
+.checkout-pay-note {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.checkout-lines {
+  gap: var(--space-4);
+}
+
+.checkout-lines .line-item {
+  grid-template-columns: 3.5rem 1fr auto;
+}
+
+.checkout-lines .line-item img {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.checkout-lines .line-item-name {
+  font-size: var(--text-base);
+}
+
+@media (max-width: 56rem) {
+  .checkout-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-summary {
+    order: -1;
+  }
+
+  .checkout-form .field.is-half,
+  .checkout-form .field.is-third {
+    grid-column: span 6;
+  }
+}

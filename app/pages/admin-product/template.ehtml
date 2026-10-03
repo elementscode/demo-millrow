@@ -1,0 +1,317 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { File, FieldErrors, LiveView, ValidationError } from "@elements/app";
+import { AdminLayout } from "#app/shared/templates/admin-layout";
+import { Photo, Product, Variant, photoUrl } from "#app/shared/services/catalog";
+import { money } from "#app/shared/money";
+import { ProductForm, deletePhoto, makePrimary, saveProduct, uploadPhotos } from "./services";
+
+interface Editor {
+  form: ProductForm;
+  errors: FieldErrors<ProductForm>;
+  saved: string;
+  error: string;
+}
+
+interface Gallery {
+  photos: Photo[];
+  files: File[];
+  error: string;
+}
+
+interface VariantDraft {
+  size: string;
+  grind: string;
+  price: string;
+  stock: number;
+}
+
+function toForm(p: Product): ProductForm {
+  return {
+    name: p.name,
+    slug: p.slug,
+    collectionId: p.collectionId,
+    tagline: p.tagline,
+    description: p.description,
+    notes: p.notes,
+    origin: p.origin,
+    process: p.process,
+    roast: p.roast,
+    published: p.published,
+    featured: p.featured,
+  };
+}
+
+function onSave(editor: Editor, productId: string) {
+  editor.errors = {};
+  editor.error = "";
+
+  try {
+    let saved = saveProduct(productId, editor.form);
+    editor.form = toForm(saved);
+    editor.saved = "Saved.";
+  } catch (err: any) {
+    editor.saved = "";
+
+    if (err instanceof ValidationError && err.errors && Object.keys(err.errors).length > 0) {
+      editor.errors = err.errors;
+    } else {
+      editor.error = err.message;
+    }
+  }
+}
+
+function onUpload(gallery: Gallery, productId: string) {
+  gallery.error = "";
+
+  try {
+    gallery.photos = uploadPhotos(productId, gallery.files);
+  } catch (err: any) {
+    gallery.error = err.message;
+  }
+
+  gallery.files = [];
+}
+
+function onDeletePhoto(gallery: Gallery, photo: Photo) {
+  gallery.photos = deletePhoto(photo.id);
+}
+
+function onPrimary(gallery: Gallery, photo: Photo) {
+  gallery.photos = makePrimary(photo.id);
+}
+
+function toCents(price: string): number {
+  let n = Math.round(parseFloat(price.replace(/[$,]/g, "")) * 100);
+
+  if (!Number.isFinite(n) || n < 0) {
+    throw new ValidationError("Enter a price like 22.00");
+  }
+
+  return n;
+}
+
+function ordered(variants: LiveView<Variant>): Variant[] {
+  return variants.sort((a, b) => a.position - b.position);
+}
+
+function onAddVariant(variants: LiveView<Variant>, draft: VariantDraft, state: { error: string }) {
+  state.error = "";
+
+  try {
+    let position = Math.max(-1, ...variants.map((v) => v.position)) + 1;
+    variants.insert({
+      size: draft.size.trim(),
+      grind: draft.grind.trim(),
+      priceCents: toCents(draft.price),
+      stock: Math.max(0, Math.floor(draft.stock) || 0),
+      position,
+    }, () => Object.assign(draft, { size: "", grind: "", price: "", stock: 0 }));
+  } catch (err: any) {
+    state.error = err.message;
+  }
+}
+
+function stockClass(v: Variant): string {
+  return v.stock === 0 ? "is-out" : v.stock <= 5 ? "is-low" : "";
+}
+
+<VariantRow (
+  variant: Variant,
+  variants: LiveView<Variant>,
+  private edit: { on: boolean; draft: VariantDraft; error: string } = { on: false, draft: { size: "", grind: "", price: "", stock: 0 }, error: "" },
+)>
+  <tr e:if={!edit.on}>
+    <td>{variant.size}</td>
+    <td>{variant.grind || "—"}</td>
+    <td class="num">{money(variant.priceCents)}</td>
+    <td class={["num stock-cell", stockClass(variant)]}>{variant.stock}</td>
+    <td class="actions">
+      <button type="button" class="is-sm is-ghost" onclick={() => startEdit(edit, variant)}>Edit</button>
+      <button type="button" class="is-sm is-ghost" onclick={() => variants.delete(variant)}>Delete</button>
+    </td>
+  </tr>
+  <tr e:else>
+    <td><input value={edit.draft.size} aria-label="Size"></td>
+    <td><input value={edit.draft.grind} aria-label="Grind"></td>
+    <td class="num"><input class="is-price" value={edit.draft.price} inputmode="decimal" aria-label="Price"></td>
+    <td class="num"><input class="is-stock" type="number" min="0" value={edit.draft.stock} aria-label="Stock"></td>
+    <td class="actions">
+      <span e:if={edit.error} class="error text-xs">{edit.error} </span>
+      <button type="button" class="is-sm is-primary" onclick={() => saveEdit(edit, variants, variant)}>Save</button>
+      <button type="button" class="is-sm is-ghost" onclick={() => edit.on = false}>Cancel</button>
+    </td>
+  </tr>
+</VariantRow>
+
+function startEdit(edit: { on: boolean; draft: VariantDraft; error: string }, v: Variant) {
+  edit.draft = { size: v.size, grind: v.grind, price: (v.priceCents / 100).toFixed(2), stock: v.stock };
+  edit.error = "";
+  edit.on = true;
+}
+
+function saveEdit(edit: { on: boolean; draft: VariantDraft; error: string }, variants: LiveView<Variant>, v: Variant) {
+  try {
+    variants.update({
+      ...v,
+      size: edit.draft.size.trim(),
+      grind: edit.draft.grind.trim(),
+      priceCents: toCents(edit.draft.price),
+      stock: Math.max(0, Math.floor(edit.draft.stock) || 0),
+    });
+    edit.on = false;
+  } catch (err: any) {
+    edit.error = err.message;
+  }
+}
+
+<html lang="en" class="page-admin-product" (
+  product: Product,
+  collections: { id: string; name: string }[],
+  photos: Photo[],
+  variants: LiveView<Variant>,
+  private editor: Editor = { form: toForm(product), errors: {}, saved: "", error: "" },
+  private gallery: Gallery = { photos, files: [], error: "" },
+  private draft: VariantDraft = { size: "", grind: "", price: "", stock: 0 },
+  private variantState: { error: string } = { error: "" },
+)>
+  <head>
+    <title>{product.name} · Millrow admin</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <AdminLayout section="products">
+      <a class="back-link" href="/admin/products">← All products</a>
+
+      <div class="admin-title row">
+        <h1>{editor.form.name || "Untitled product"}</h1>
+        <div class="cluster is-sm">
+          <span e:if={editor.form.published} class="pill is-success">Published</span>
+          <span e:else class="pill">Draft</span>
+          <a e:if={editor.form.published} class="button is-sm" href={`/products/${editor.form.slug}`} target="_blank">View in shop ↗</a>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="card-head row" style="justify-content: space-between">
+          <h2>Variants and stock</h2>
+          <span class="pill is-success"><span class="pill-dot"></span>Live</span>
+        </div>
+        <table class="admin-table variant-table">
+          <thead>
+            <tr><th>Size or option</th><th>Grind</th><th class="num">Price</th><th class="num">Stock</th><th></th></tr>
+          </thead>
+          <tbody>
+            <VariantRow e:for={v of ordered(variants)} variant={v} {variants} />
+          </tbody>
+          <tbody>
+            <tr>
+              <td><input value={draft.size} placeholder="12 oz" aria-label="New size"></td>
+              <td><input value={draft.grind} placeholder="Whole bean" aria-label="New grind"></td>
+              <td class="num"><input class="is-price" value={draft.price} placeholder="22.00" inputmode="decimal" aria-label="New price"></td>
+              <td class="num"><input class="is-stock" type="number" min="0" value={draft.stock} aria-label="New stock"></td>
+              <td class="actions"><button type="button" class="is-sm" onclick={() => onAddVariant(variants, draft, variantState)}>Add variant</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div e:if={variantState.error} class="card-body"><p class="error">{variantState.error}</p></div>
+      </section>
+
+      <div class="editor-grid">
+        <section class="card">
+          <div class="card-head"><h2>Details</h2></div>
+          <div class="card-body">
+            <form class="product-form stack" onsubmit={() => onSave(editor, product.id)}>
+              <p e:if={editor.error} class="callout is-danger" role="alert">{editor.error}</p>
+
+              <div class="field">
+                <label for="name">Name</label>
+                <input id="name" value={editor.form.name} class={[editor.errors.name && "is-error"]}>
+                <p e:if={editor.errors.name} class="error">{editor.errors.name?.[0]}</p>
+              </div>
+
+
+              <div class="field">
+                <label for="slug">URL</label>
+                <input id="slug" value={editor.form.slug} class={[editor.errors.slug && "is-error"]} spellcheck={false}>
+                <p e:if={editor.errors.slug} class="error">{editor.errors.slug?.[0]}</p>
+                <p e:else class="hint">/products/{editor.form.slug}</p>
+              </div>
+
+              <div class="field">
+                <label for="collection">Collection</label>
+                <select id="collection" value={editor.form.collectionId}>
+                  <option e:for={c of collections} value={c.id}>{c.name}</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="tagline">Tagline</label>
+                <input id="tagline" value={editor.form.tagline} placeholder="Blueberry, jasmine, cocoa nib">
+              </div>
+
+              <div class="field">
+                <label for="description">Description</label>
+                <textarea id="description" value={editor.form.description}></textarea>
+              </div>
+
+              <div class="field">
+                <label for="notes">Tasting notes</label>
+                <input id="notes" value={editor.form.notes} placeholder="Blueberry · Jasmine · Cocoa nib">
+              </div>
+
+              <div class="field">
+                <label for="origin">Origin</label>
+                <input id="origin" value={editor.form.origin}>
+              </div>
+
+              <div class="field">
+                <label for="process">Process</label>
+                <input id="process" value={editor.form.process} placeholder="Washed">
+              </div>
+
+              <div class="field">
+                <label for="roast">Roast</label>
+                <input id="roast" value={editor.form.roast} placeholder="Light">
+              </div>
+
+              <div class="toggles cluster">
+                <label><input type="checkbox" checked={editor.form.published}> Published in the shop</label>
+                <label><input type="checkbox" checked={editor.form.featured}> Featured on the home page</label>
+              </div>
+
+              <div class="save-row row">
+                <span class="text-sm">{editor.saved}</span>
+                <button type="submit" class="is-primary">Save details</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Photos</h2></div>
+          <div class="card-body stack">
+            <div e:if={gallery.photos.length > 0} class="photo-grid">
+              <div e:for={[i, ph] of gallery.photos.entries()} class={["photo-tile", i === 0 && "is-primary"]}>
+                <img src={photoUrl(ph)} alt={ph.alt} width="120" height="120">
+                <div class="cluster">
+                  <span e:if={i === 0} class="pill is-accent">Primary</span>
+                  <button e:else type="button" class="is-sm is-ghost" onclick={() => onPrimary(gallery, ph)}>Make primary</button>
+                  <button type="button" class="is-sm is-ghost" onclick={() => onDeletePhoto(gallery, ph)}>Delete</button>
+                </div>
+              </div>
+            </div>
+            <p e:else class="hint">No photos yet. The first photo is the one shoppers see on cards.</p>
+
+            <form class="photo-upload stack is-sm" onsubmit={() => onUpload(gallery, product.id)}>
+              <input type="file" multiple accept="image/png,image/jpeg,image/webp" value={gallery.files}>
+              <p e:if={gallery.error} class="error">{gallery.error}</p>
+              <button type="submit" class="is-sm" disabled={gallery.files.length === 0}>Upload photos</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </AdminLayout>
+  </body>
+</html>

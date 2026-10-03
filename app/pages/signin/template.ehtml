@@ -1,0 +1,83 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { redirect } from "@elements/app";
+import { signin } from "#app/shared/services/auth";
+
+interface SigninForm {
+  email: string;
+  password: string;
+  error: string;
+}
+
+const DEMO_EMAIL = "admin@millrow.coffee";
+const DEMO_PASSWORD = "millrow-admin";
+
+function onSubmit(form: SigninForm) {
+  try {
+    signin(form.email, form.password);
+    form.error = "";
+    redirect("/admin");
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function useDemo(form: SigninForm) {
+  form.email = DEMO_EMAIL;
+  form.password = DEMO_PASSWORD;
+}
+
+<html lang="en" class="page-signin" (
+  showDemo: boolean,
+  private form: SigninForm = { email: "", password: "", error: "" },
+)>
+  <head>
+    <title>Staff sign in · Millrow Coffee</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <main class="signin center">
+      <div class="signin-panel stack is-lg">
+        <a href="/" class="signin-brand row">
+          <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true" focusable="false">
+            <circle cx="16" cy="16" r="15" fill="currentColor"/>
+            <path d="M16 5 C10 10 10 22 16 27 C22 22 22 10 16 5 Z" fill="none" stroke="#fff" stroke-width="2"/>
+            <path d="M16 6 C13 12 19 20 16 26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Millrow
+        </a>
+
+        <div class="card">
+          <div class="card-body">
+            <form class="stack" onsubmit={() => onSubmit(form)}>
+              <h1>Staff sign in</h1>
+
+              <p e:if={form.error} class="error" role="alert">{form.error}</p>
+
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck={false} value={form.email} required>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" value={form.password} required>
+              </div>
+
+              <button type="submit" class="is-primary is-block">Sign in</button>
+            </form>
+          </div>
+        </div>
+
+        <div e:if={showDemo} class="callout is-info signin-demo stack is-sm">
+          <p class="callout-title">Demo admin</p>
+          <p>Email <code>{DEMO_EMAIL}</code><br>Password <code>{DEMO_PASSWORD}</code></p>
+          <p><button type="button" class="is-sm" onclick={() => useDemo(form)}>Fill in the demo login</button></p>
+        </div>
+
+        <a class="signin-back" href="/">← Back to the shop</a>
+      </div>
+    </main>
+  </body>
+</html>

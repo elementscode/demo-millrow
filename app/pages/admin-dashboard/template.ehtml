@@ -1,0 +1,187 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import type { Listener, LiveView } from "@elements/app";
+import { AdminLayout } from "#app/shared/templates/admin-layout";
+import { Dashboard, DayRevenue, fetchDashboard } from "#app/shared/services/stats";
+import { OrderRow, statusIntent } from "#app/shared/services/orders";
+import { money } from "#app/shared/money";
+
+function onActivity(stats: { value: Dashboard }) {
+  stats.value = fetchDashboard();
+}
+
+function whole(cents: number): string {
+  return "$" + Math.round(cents / 100).toLocaleString("en-US");
+}
+
+/** A clean axis top: the next 1, 2 or 5 step above the tallest day. */
+function axisMax(days: DayRevenue[]): number {
+  let max = Math.max(...days.map((d) => d.revenueCents), 1000);
+  let step = Math.pow(10, Math.floor(Math.log10(max)));
+
+  for (let m of [1, 2, 5, 10]) {
+    if (m * step >= max) {
+      return m * step;
+    }
+  }
+
+  return 10 * step;
+}
+
+function barHeight(d: DayRevenue, days: DayRevenue[]): string {
+  return `${(d.revenueCents / axisMax(days)) * 100}%`;
+}
+
+function dayLabel(d: Date): string {
+  return d.toLocaleDateString("en-US", { weekday: "narrow" });
+}
+
+function dayLong(d: Date): string {
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function meterWidth(cents: number, dash: Dashboard): string {
+  let top = dash.top[0]?.revenueCents ?? 1;
+
+  return `${Math.max(4, (cents / top) * 100)}%`;
+}
+
+function recent(orders: LiveView<OrderRow>): OrderRow[] {
+  return orders.sort((a, b) => +b.createdAt - +a.createdAt).slice(0, 6);
+}
+
+function ago(d: Date): string {
+  let minutes = Math.round((Date.now() - +d) / 60000);
+
+  if (minutes < 1) {
+    return "just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  if (minutes < 60 * 24) {
+    return `${Math.round(minutes / 60)}h ago`;
+  }
+
+  return `${Math.round(minutes / 1440)}d ago`;
+}
+
+<html lang="en" class="page-admin-dashboard" (
+  initial: Dashboard,
+  activity: Listener<{ orderId: string }>,
+  orders: LiveView<OrderRow>,
+  private stats: { value: Dashboard } = { value: initial },
+) oninit={() => activity.on("notify", () => onActivity(stats))}>
+  <head>
+    <title>Dashboard · Millrow admin</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <AdminLayout section="dashboard">
+      <div class="admin-title row">
+        <h1>Sales</h1>
+        <span class="live-dot row"><span class="pill is-success"><span class="pill-dot"></span>Live</span> Updates as orders come in</span>
+      </div>
+
+      <div class="stat-tiles">
+        <div class="card stat-tile">
+          <div class="card-body">
+            <span class="stat-label">Today</span>
+            <span class="stat-value">{money(stats.value.today.revenueCents)}</span>
+            <span class="stat-sub">{stats.value.today.orders} {stats.value.today.orders === 1 ? "order" : "orders"}</span>
+          </div>
+        </div>
+        <div class="card stat-tile">
+          <div class="card-body">
+            <span class="stat-label">This week</span>
+            <span class="stat-value">{money(stats.value.week.revenueCents)}</span>
+            <span class="stat-sub">{stats.value.week.orders} {stats.value.week.orders === 1 ? "order" : "orders"}</span>
+          </div>
+        </div>
+        <div class="card stat-tile">
+          <div class="card-body">
+            <span class="stat-label">This month</span>
+            <span class="stat-value">{money(stats.value.month.revenueCents)}</span>
+            <span class="stat-sub">{stats.value.month.orders} {stats.value.month.orders === 1 ? "order" : "orders"}</span>
+          </div>
+        </div>
+        <a class="card stat-tile is-action" href="/admin/orders?status=paid">
+          <div class="card-body">
+            <span class="stat-label">Ready to ship</span>
+            <span class="stat-value">{stats.value.toShip}</span>
+            <span class="stat-sub">Paid, not yet shipped →</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="dash-grid">
+        <section class="card">
+          <div class="card-head"><h2>Revenue, last 14 days</h2></div>
+          <div class="card-body">
+            <div class="chart">
+              <div class="chart-axis" aria-hidden="true">
+                <span style="bottom: 100%">{whole(axisMax(stats.value.days))}</span>
+                <span style="bottom: 50%">{whole(axisMax(stats.value.days) / 2)}</span>
+                <span style="bottom: 0%">$0</span>
+              </div>
+              <div class="chart-plot">
+                <div class="chart-grid" style="bottom: 100%"></div>
+                <div class="chart-grid" style="bottom: 50%"></div>
+                <button e:for={d of stats.value.days}
+                        type="button"
+                        class="chart-col"
+                        aria-label={`${dayLong(d.day)}: ${money(d.revenueCents)} from ${d.orders} orders`}>
+                  <span class="chart-bar" style={`height: ${barHeight(d, stats.value.days)}`}></span>
+                  <span class="chart-tip"><strong>{dayLong(d.day)}</strong><br>{money(d.revenueCents)} · {d.orders} {d.orders === 1 ? "order" : "orders"}</span>
+                </button>
+              </div>
+            </div>
+            <div class="chart-days" aria-hidden="true">
+              <span e:for={d of stats.value.days}>{dayLabel(d.day)}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Top products this month</h2></div>
+          <div class="card-body">
+            <ol e:if={stats.value.top.length > 0} class="top-list stack">
+              <li e:for={t of stats.value.top} class="top-row">
+                <a e:if={t.slug} href={`/products/${t.slug}`} target="_blank">{t.name}</a>
+                <span e:else>{t.name}</span>
+                <span class="amount">{money(t.revenueCents)}</span>
+                <span class="top-meter" style={`width: ${meterWidth(t.revenueCents, stats.value)}`}></span>
+                <span class="top-units">{t.units} sold</span>
+              </li>
+            </ol>
+            <p e:else class="stat-sub">No sales yet this month.</p>
+          </div>
+        </section>
+      </div>
+
+      <section class="card">
+        <div class="card-head row">
+          <h2>Latest orders</h2>
+          <a href="/admin/orders" class="text-sm">All orders →</a>
+        </div>
+        <table class="recent">
+          <thead>
+            <tr><th>Order</th><th>Customer</th><th>Status</th><th>Placed</th><th class="num">Total</th></tr>
+          </thead>
+          <tbody>
+            <tr e:for={o of recent(orders)} class={[Date.now() - +o.createdAt < 60000 && "is-new"]}>
+              <td><a href={`/admin/orders/${o.id}`}>#{o.number}</a></td>
+              <td>{o.name}</td>
+              <td><span class={["pill", statusIntent(o.status)]}>{o.status}</span></td>
+              <td>{ago(o.createdAt)}</td>
+              <td class="num">{money(o.totalCents)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </AdminLayout>
+  </body>
+</html>

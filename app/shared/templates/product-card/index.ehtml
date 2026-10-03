@@ -1,0 +1,20 @@
+import "./style.css";
+import { ProductCard as ProductCardData, cardPhotoUrl } from "#app/shared/services/catalog";
+import { price } from "#app/shared/money";
+
+<ProductCard (product: ProductCardData)>
+  <a class="product-card" href={`/products/${product.slug}`}>
+    <div class="product-card-photo">
+      <img e:if={product.photoId} src={cardPhotoUrl(product)} alt={product.photoAlt ?? product.name} width="600" height="600" loading="lazy">
+      <span e:if={!product.inStock} class="pill">Sold out</span>
+    </div>
+
+    <div class="stack is-xs">
+      <span class="product-card-name">{product.name}</span>
+      <div class="product-card-meta row">
+        <span>{product.tagline}</span>
+        <span class="product-card-price">from {price(product.fromCents)}</span>
+      </div>
+    </div>
+  </a>
+</ProductCard>
