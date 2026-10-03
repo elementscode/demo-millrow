@@ -1,0 +1,78 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { NotFoundError, redirect, sql } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Cart, loadCart } from "#app/shared/cart";
+
+interface LookupForm {
+  email: string;
+  number: string;
+  error: string;
+}
+
+/**
+ * Both have to match: an order number alone is guessable, an email alone
+ * would list someone's orders.
+ */
+/** @rpc */
+export function findOrder(email: string, number: string): string {
+  let n = parseInt(number.replace(/[^0-9]/g, ""), 10);
+
+  let order = Number.isFinite(n) ? sql<{ id: string }>(`
+    select id from orders
+     where number = ${n} and lower(email) = ${email.trim().toLowerCase()} and status <> 'cancelled'
+  `).first() : undefined;
+
+  if (!order) {
+    throw new NotFoundError("We could not find an order with that email and number.");
+  }
+
+  return order.id;
+}
+
+function onSubmit(form: LookupForm) {
+  try {
+    let id = findOrder(form.email, form.number);
+    form.error = "";
+    redirect(`/order/${id}`);
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+<html lang="en" class="page-order-lookup" (
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+  private form: LookupForm = { email: "", number: "", error: "" },
+) oninit={() => loadCart(cart)}>
+  <head>
+    <title>Find an order · Millrow Coffee</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin}>
+      <div class="lookup stack is-lg">
+        <div class="stack is-sm">
+          <h1 class="page-title">Find an order</h1>
+          <p class="lede">Enter the email you checked out with and the order number from your receipt.</p>
+        </div>
+
+        <form class="stack" onsubmit={() => onSubmit(form)}>
+          <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck={false} value={form.email} required>
+          </div>
+
+          <div class="field">
+            <label for="number">Order number</label>
+            <input id="number" name="number" inputmode="numeric" placeholder="1001" value={form.number} required>
+          </div>
+
+          <button type="submit" class="is-primary is-lg is-block">Find my order</button>
+        </form>
+      </div>
+    </Layout>
+  </body>
+</html>

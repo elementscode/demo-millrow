@@ -1,0 +1,27 @@
+import "./style.css";
+import { OrderDetail } from "#app/shared/services/orders";
+import { OrderLines, ShipTo } from "#app/emails/shared";
+
+/**
+ * The receipt, sent once when Stripe reports the order paid.
+ *
+ * @email
+ */
+<html (detail: OrderDetail)>
+  <body class="email order-confirmation">
+    <div class="email-wrap">
+      <p class="brand">Millrow Coffee</p>
+      <h1>Thanks, {detail.order.name.split(" ")[0]}. Your order is in.</h1>
+      <p>Order <strong>#{detail.order.number}</strong> is paid. We roast on Tuesdays and Fridays and ship the same afternoon; you will get another email with tracking when it leaves.</p>
+
+      <OrderLines {detail} />
+      <ShipTo {detail} />
+
+      <p><a class="button" href={`/order/${detail.order.id}`}>View your order</a></p>
+
+      <div class="email-footer">
+        <p>Millrow Coffee · Questions? Reply to this email.</p>
+      </div>
+    </div>
+  </body>
+</html>

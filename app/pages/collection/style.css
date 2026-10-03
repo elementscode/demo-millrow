@@ -1,0 +1,35 @@
+@import "#app/shared/styles/page.css";
+
+.collection-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--space-8);
+  padding-bottom: var(--space-10);
+}
+
+.collection-head h1 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-regular);
+  font-size: clamp(var(--text-4xl), 5vw, var(--text-6xl));
+  line-height: 1.05;
+}
+
+.collection-head .lede {
+  max-width: 40rem;
+}
+
+.collection-empty {
+  padding: var(--space-16) 0;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 48rem) {
+  .collection-head {
+    grid-template-columns: 1fr;
+  }
+}
+
+.collection-head .tab {
+  text-decoration: none;
+}

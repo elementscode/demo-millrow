@@ -1,0 +1,7 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/summary.css";
+
+.lookup {
+  max-width: 28rem;
+  margin: var(--space-8) auto;
+}

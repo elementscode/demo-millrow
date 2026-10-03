@@ -1,0 +1,111 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { Cart, loadCart, setQuantity } from "#app/shared/cart";
+import { PricedCart, PricedLine, priceCart } from "#app/shared/services/cart";
+import { photoUrl } from "#app/shared/services/catalog";
+import { money, price } from "#app/shared/money";
+import config from "#config";
+
+interface CartView {
+  loaded: boolean;
+  priced: PricedCart;
+}
+
+const EMPTY: PricedCart = { lines: [], subtotalCents: 0, shippingCents: 0, totalCents: 0, itemCount: 0 };
+
+function setup(cart: Cart, view: CartView) {
+  loadCart(cart);
+  view.priced = priceCart(cart.lines);
+  view.loaded = true;
+}
+
+function onQuantity(cart: Cart, view: CartView, line: PricedLine, quantity: number) {
+  setQuantity(cart, line.variantId, Math.min(quantity, Math.max(line.stock, 1)));
+  view.priced = priceCart(cart.lines);
+}
+
+function lineWarning(line: PricedLine): string {
+  if (line.stock === 0) {
+    return "Sold out. Remove it to check out.";
+  }
+
+  if (line.quantity > line.stock) {
+    return `Only ${line.stock} left.`;
+  }
+
+  return "";
+}
+
+function canCheckout(priced: PricedCart): boolean {
+  return priced.lines.length > 0 && priced.lines.every((l) => l.stock >= l.quantity);
+}
+
+function toFreeShipping(priced: PricedCart): number {
+  return config.store.freeShippingCents - priced.subtotalCents;
+}
+
+<html lang="en" class="page-cart" (
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+  private view: CartView = { loaded: false, priced: EMPTY },
+) oninit={() => setup(cart, view)}>
+  <head>
+    <title>Your cart · Millrow Coffee</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin}>
+      <div class="stack is-xl">
+        <h1 class="page-title">Your cart</h1>
+
+        <div e:if={!view.loaded} class="cart-loading"></div>
+
+        <div e:elseif={view.priced.lines.length === 0} class="cart-empty stack is-lg">
+          <p class="lede">Your cart is empty.</p>
+          <div class="cluster" style="justify-content: center">
+            <a href="/collections/single-origin" class="button is-primary">Shop single origin</a>
+            <a href="/collections/blends" class="button">Shop blends</a>
+          </div>
+        </div>
+
+        <div e:else class="cart-layout">
+          <ul class="cart-lines stack is-xs">
+            <li e:for={line of view.priced.lines} class="line-item">
+              <img e:if={line.photoId} src={photoUrl({ id: line.photoId!, hash: line.photoHash! })} alt="" width="72" height="72">
+              <span e:else></span>
+
+              <div class="stack is-xs">
+                <a class="line-item-name" href={`/products/${line.slug}`}>{line.productName}</a>
+                <span class="line-item-meta">{line.label} · {price(line.unitCents)} each</span>
+                <div class="cluster is-sm">
+                  <div class="cart-qty row">
+                    <button type="button" class="is-sm is-ghost" aria-label="One fewer" onclick={() => onQuantity(cart, view, line, line.quantity - 1)}>−</button>
+                    <span>{line.quantity}</span>
+                    <button type="button" class="is-sm is-ghost" aria-label="One more" disabled={line.quantity >= line.stock} onclick={() => onQuantity(cart, view, line, line.quantity + 1)}>+</button>
+                  </div>
+                  <button type="button" class="is-sm is-ghost" onclick={() => onQuantity(cart, view, line, 0)}>Remove</button>
+                </div>
+                <span e:if={lineWarning(line)} class="cart-warning">{lineWarning(line)}</span>
+              </div>
+
+              <span class="line-item-amount">{money(line.unitCents * line.quantity)}</span>
+            </li>
+          </ul>
+
+          <aside class="order-summary stack">
+            <h2>Summary</h2>
+            <div class="stack is-sm">
+              <div class="summary-row row"><span>Subtotal</span><span>{money(view.priced.subtotalCents)}</span></div>
+              <div class="summary-row row"><span>Shipping</span><span>{view.priced.shippingCents === 0 ? "Free" : money(view.priced.shippingCents)}</span></div>
+              <div class="summary-row row is-total"><span>Total</span><span>{money(view.priced.totalCents)}</span></div>
+            </div>
+            <p e:if={toFreeShipping(view.priced) > 0} class="summary-hint">Add {money(toFreeShipping(view.priced))} more for free shipping.</p>
+            <a e:if={canCheckout(view.priced)} href="/checkout" class="button is-primary is-lg is-block">Check out</a>
+            <button e:else type="button" class="is-primary is-lg is-block" disabled>Check out</button>
+          </aside>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

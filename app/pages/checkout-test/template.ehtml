@@ -1,0 +1,93 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { redirect } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { Cart, loadCart } from "#app/shared/cart";
+import { OrderDetail } from "#app/shared/services/orders";
+import { photoUrl } from "#app/shared/services/catalog";
+import { money } from "#app/shared/money";
+import { payTestOrder } from "./services";
+
+interface PayState {
+  busy: boolean;
+  error: string;
+}
+
+function onPay(orderId: string, state: PayState) {
+  state.busy = true;
+  state.error = "";
+
+  try {
+    payTestOrder(orderId);
+    redirect(`/order/${orderId}?placed=1`);
+  } catch (err: any) {
+    state.busy = false;
+    state.error = err.message ?? "Something went wrong. Try again.";
+  }
+}
+
+<html lang="en" class="page-checkout-test" (
+  detail: OrderDetail,
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+  private state: PayState = { busy: false, error: "" },
+) oninit={() => loadCart(cart)}>
+  <head>
+    <title>Test checkout · Millrow Coffee</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin}>
+      <div class="test-checkout stack is-lg">
+        <div class="test-checkout-head row">
+          <div class="stack is-xs">
+            <p class="eyebrow">Order #{detail.order.number} · {detail.order.email}</p>
+            <h1 class="page-title">Pay Millrow Coffee</h1>
+          </div>
+          <span class="pill is-warning"><span class="pill-dot"></span>Test mode</span>
+        </div>
+
+        <div class="order-summary stack is-lg">
+          <p class="test-checkout-total">
+            <span class="test-checkout-total-label">Total due</span>
+            <span class="test-checkout-total-amount">{money(detail.order.totalCents)}</span>
+          </p>
+
+          <ul class="test-checkout-lines stack">
+            <li e:for={item of detail.items} class="line-item">
+              <img e:if={item.photoId} src={photoUrl({ id: item.photoId!, hash: item.photoHash! })} alt="" width="56" height="56">
+              <span e:else></span>
+              <div class="stack is-xs">
+                <span class="line-item-name">{item.productName}</span>
+                <span class="line-item-meta">{item.variantLabel} · Qty {item.quantity}</span>
+              </div>
+              <span class="line-item-amount">{money(item.unitCents * item.quantity)}</span>
+            </li>
+          </ul>
+
+          <div class="stack is-sm">
+            <div class="summary-row row"><span>Subtotal</span><span>{money(detail.order.subtotalCents)}</span></div>
+            <div class="summary-row row"><span>Shipping</span><span>{detail.order.shippingCents === 0 ? "Free" : money(detail.order.shippingCents)}</span></div>
+            <div class="summary-row row is-total"><span>Total</span><span>{money(detail.order.totalCents)}</span></div>
+          </div>
+        </div>
+
+        <div class="stack is-sm">
+          <p e:if={state.error} class="callout is-danger" role="alert">{state.error}</p>
+          <button type="button" class="is-primary is-lg is-block" disabled={state.busy} onclick={() => onPay(detail.order.id, state)}>
+            {state.busy ? "Paying…" : `Pay ${money(detail.order.totalCents)}`}
+          </button>
+          <a href={`/checkout/cancel?order=${detail.order.id}`} class="test-checkout-cancel">Cancel and return to cart</a>
+        </div>
+
+        <p class="test-checkout-note">
+          This stands in for Stripe while the shop has no Stripe key. No card is
+          taken. Add <code>STRIPE_SECRET_KEY</code> to
+          <code>config/env/development.env</code> and this button opens real
+          Stripe Checkout instead.
+        </p>
+      </div>
+    </Layout>
+  </body>
+</html>

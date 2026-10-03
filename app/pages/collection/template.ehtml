@@ -1,0 +1,42 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { ProductCard } from "#app/shared/templates/product-card";
+import { Collection, ProductCard as ProductCardData } from "#app/shared/services/catalog";
+import { Cart, loadCart } from "#app/shared/cart";
+
+<html lang="en" class="page-collection" (
+  collection: Collection,
+  collections: Collection[],
+  products: ProductCardData[],
+  isAdmin: boolean,
+  private cart: Cart = { lines: [] },
+) oninit={() => loadCart(cart)}>
+  <head>
+    <title>{collection.name} · Millrow Coffee</title>
+    <meta name="description" content={collection.description}>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout {cart} {isAdmin} section={collection.slug}>
+      <header class="collection-head">
+        <div class="stack">
+          <p class="eyebrow">{collection.tagline}</p>
+          <h1>{collection.name}</h1>
+          <p class="lede">{collection.description}</p>
+        </div>
+
+        <nav class="tabs" aria-label="Collections">
+          <div class="tab-list">
+            <a e:for={c of collections} href={`/collections/${c.slug}`} class={["tab", c.id === collection.id && "is-active"]}>{c.name}</a>
+          </div>
+        </nav>
+      </header>
+
+      <div e:if={products.length > 0} class="product-grid">
+        <ProductCard e:for={p of products} product={p} />
+      </div>
+      <p e:else class="collection-empty">Nothing in this collection right now. New lots arrive every few weeks.</p>
+    </Layout>
+  </body>
+</html>

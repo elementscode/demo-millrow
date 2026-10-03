@@ -1,0 +1,38 @@
+@import "#app/shared/styles/page.css";
+
+.signin {
+  min-height: 100dvh;
+  padding: var(--space-10) var(--space-5);
+  background: var(--bg-soft);
+}
+
+.signin-panel {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.signin-brand {
+  gap: var(--space-2-5);
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.signin-brand svg {
+  color: var(--accent);
+}
+
+.signin h1 {
+  font-size: var(--text-xl);
+}
+
+.signin-demo code {
+  font-size: var(--text-sm);
+}
+
+.signin-back {
+  text-align: center;
+  font-size: var(--text-sm);
+}

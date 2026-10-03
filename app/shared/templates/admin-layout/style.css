@@ -1,0 +1,121 @@
+@import "#app/shared/styles/page.css";
+
+.admin {
+  --sidebar-width: 15rem;
+  background: var(--bg-soft);
+}
+
+.admin-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-4);
+  border-right: 1px solid var(--rule-soft);
+  background: var(--bg);
+}
+
+.admin-brand {
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.admin-brand svg {
+  color: var(--accent);
+}
+
+.admin-brand small {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--ink-dim);
+}
+
+.admin-nav {
+  gap: var(--space-1);
+}
+
+.admin-nav a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.admin-nav a:hover {
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.admin-nav a.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.admin-foot {
+  margin-top: auto;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.admin-foot a {
+  color: var(--ink-soft);
+}
+
+.admin-main {
+  padding: var(--space-8) clamp(var(--space-4), 3vw, var(--space-10)) var(--space-16);
+}
+
+.admin-content {
+  width: 100%;
+  max-width: var(--container-wide);
+}
+
+.admin-title {
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.admin-title h1 {
+  font-size: var(--text-3xl);
+}
+
+@media (max-width: 48rem) {
+  .admin-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .admin-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .admin-foot {
+    margin-top: 0;
+    flex-direction: row;
+  }
+}
+
+.admin-content > * {
+  min-width: 0;
+}
+
+.admin-content .card {
+  overflow-x: auto;
+}

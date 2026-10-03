@@ -1,0 +1,155 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { LiveView, ValidationError, redirect, sql } from "@elements/app";
+import { AdminLayout } from "#app/shared/templates/admin-layout";
+import { Variant, photoUrl } from "#app/shared/services/catalog";
+import { isUserAdminOrThrow } from "#app/shared/services/admin";
+import { price } from "#app/shared/money";
+
+export interface AdminProduct {
+  id: string;
+  slug: string;
+  name: string;
+  published: boolean;
+  featured: boolean;
+  collectionName: string;
+  photoId: string | null;
+  photoHash: string | null;
+}
+
+interface NewProduct {
+  name: string;
+  collectionId: string;
+  error: string;
+}
+
+export function slugify(name: string): string {
+  return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/** @rpc */
+export function createProduct(name: string, collectionId: string): string {
+  isUserAdminOrThrow();
+
+  let clean = name.trim();
+  if (!clean) {
+    throw new ValidationError("Give the product a name.");
+  }
+
+  let base = slugify(clean) || "product";
+  let slug = base;
+  for (let n = 2; !sql(`select 1 from products where slug = ${slug}`).empty(); n++) {
+    slug = `${base}-${n}`;
+  }
+
+  // New products start unpublished, so nothing half-made reaches the shop.
+  let product = sql<{ id: string }>(`
+    insert into products (collectionId, slug, name, published, position)
+         values (${collectionId}, ${slug}, ${clean}, false,
+                 (select coalesce(max(position), 0) + 1 from products where collectionId = ${collectionId}))
+      returning id
+  `).firstOrThrow();
+
+  return product.id;
+}
+
+function onCreate(form: NewProduct) {
+  try {
+    let id = createProduct(form.name, form.collectionId);
+    redirect(`/admin/products/${id}`);
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function forProduct(variants: LiveView<Variant>, productId: string): Variant[] {
+  return variants.filter((v) => v.productId === productId);
+}
+
+function totalStock(variants: LiveView<Variant>, productId: string): number {
+  return forProduct(variants, productId).reduce((n, v) => n + v.stock, 0);
+}
+
+function soldOut(variants: LiveView<Variant>, productId: string): number {
+  return forProduct(variants, productId).filter((v) => v.stock === 0).length;
+}
+
+function priceRange(variants: LiveView<Variant>, productId: string): string {
+  let prices = forProduct(variants, productId).map((v) => v.priceCents);
+
+  if (prices.length === 0) {
+    return "No variants";
+  }
+
+  let lo = Math.min(...prices);
+  let hi = Math.max(...prices);
+
+  return lo === hi ? price(lo) : `${price(lo)} to ${price(hi)}`;
+}
+
+<html lang="en" class="page-admin-products" (
+  products: AdminProduct[],
+  collections: { id: string; name: string }[],
+  variants: LiveView<Variant>,
+  private form: NewProduct = { name: "", collectionId: collections[0]?.id ?? "", error: "" },
+)>
+  <head>
+    <title>Products · Millrow admin</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <AdminLayout section="products">
+      <div class="admin-title row">
+        <h1>Products</h1>
+        <form class="new-product row" onsubmit={() => onCreate(form)}>
+          <input placeholder="New product name" value={form.name} aria-label="New product name">
+          <select value={form.collectionId} aria-label="Collection">
+            <option e:for={c of collections} value={c.id}>{c.name}</option>
+          </select>
+          <button type="submit" class="is-primary">Add product</button>
+        </form>
+      </div>
+
+      <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+
+      <div class="card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Collection</th>
+              <th>Price</th>
+              <th class="num">Variants</th>
+              <th class="num">In stock</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr e:for={p of products}>
+              <td>
+                <a class="product-cell row" href={`/admin/products/${p.id}`}>
+                  <img e:if={p.photoId} class="product-thumb" src={photoUrl({ id: p.photoId!, hash: p.photoHash! })} alt="" width="44" height="44">
+                  <span e:else class="product-thumb"></span>
+                  <strong>{p.name}</strong>
+                </a>
+              </td>
+              <td class="muted">{p.collectionName}</td>
+              <td class="muted">{priceRange(variants, p.id)}</td>
+              <td class="num">{forProduct(variants, p.id).length}</td>
+              <td class="num">
+                <span class={[totalStock(variants, p.id) === 0 ? "stock-out" : totalStock(variants, p.id) <= 10 && "stock-low"]}>{totalStock(variants, p.id)}</span>
+                <span e:if={soldOut(variants, p.id) > 0} class="muted"> · {soldOut(variants, p.id)} sold out</span>
+              </td>
+              <td>
+                <span e:if={p.published} class="pill is-success">Published</span>
+                <span e:else class="pill">Draft</span>
+                <span e:if={p.featured} class="pill is-accent">Featured</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AdminLayout>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+@layer tokens {
+  :root {
+    --brand-50: oklch(0.975 0.012 55);
+    --brand-100: oklch(0.945 0.028 55);
+    --brand-200: oklch(0.89 0.055 52);
+    --brand-300: oklch(0.81 0.09 50);
+    --brand-400: oklch(0.71 0.125 45);
+    --brand-500: oklch(0.61 0.14 42);
+    --brand-600: oklch(0.52 0.13 40);
+    --brand-700: oklch(0.43 0.105 38);
+    --brand-800: oklch(0.34 0.075 38);
+    --brand-900: oklch(0.25 0.05 38);
+    --brand-950: oklch(0.17 0.03 38);
+    --accent: var(--brand-600);
+    --accent-deep: var(--brand-700);
+    --accent-soft: var(--brand-50);
+    --accent-ink: #ffffff;
+    --accent-edge: var(--brand-200);
+    --link-c: 0.13;
+    --link-h: 40;
+    --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: var(--brand-400);
+      --accent-deep: var(--brand-300);
+      --accent-soft: var(--brand-900);
+      --accent-ink: var(--brand-950);
+      --accent-edge: var(--brand-700);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --accent: var(--brand-400);
+    --accent-deep: var(--brand-300);
+    --accent-soft: var(--brand-900);
+    --accent-ink: var(--brand-950);
+    --accent-edge: var(--brand-700);
+  }
+}

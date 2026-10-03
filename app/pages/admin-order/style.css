@@ -1,0 +1,68 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/admin.css";
+
+.order-back {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.admin-order-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.order-totals td {
+  border-bottom: 0;
+}
+
+.order-totals .is-total td {
+  font-weight: var(--weight-semibold);
+  border-top: 1px solid var(--rule);
+}
+
+.timeline {
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--space-3);
+}
+
+.timeline .when {
+  color: var(--ink-soft);
+}
+
+.ship-form {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.ship-form .field {
+  margin: 0;
+}
+
+.ship-form button {
+  grid-column: 1 / -1;
+}
+
+.card-body address {
+  font-style: normal;
+  font-size: var(--text-sm);
+}
+
+.refund-confirm {
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 64rem) {
+  .admin-order-grid {
+    grid-template-columns: 1fr;
+  }
+}

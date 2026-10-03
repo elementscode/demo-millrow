@@ -1,0 +1,178 @@
+import "./style.css";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { FieldErrors, ValidationError } from "@elements/app";
+import { AdminLayout } from "#app/shared/templates/admin-layout";
+import { OrderDetail, carrierUrl, statusIntent, statusLabel } from "#app/shared/services/orders";
+import { money } from "#app/shared/money";
+import { CARRIERS, ShipForm, markShipped, refundOrder } from "./services";
+
+interface PageState {
+  detail: OrderDetail;
+  ship: ShipForm;
+  errors: FieldErrors<ShipForm>;
+  error: string;
+  confirmRefund: boolean;
+  restock: boolean;
+  busy: boolean;
+  notice: string;
+}
+
+function onShip(state: PageState) {
+  state.errors = {};
+  state.error = "";
+  state.busy = true;
+
+  try {
+    state.detail = markShipped(state.detail.order.id, state.ship);
+    state.notice = `Marked shipped. ${state.detail.order.name} is getting an email with the tracking number.`;
+  } catch (err: any) {
+    if (err instanceof ValidationError && err.errors && Object.keys(err.errors).length > 0) {
+      state.errors = err.errors;
+    } else {
+      state.error = err.message;
+    }
+  }
+
+  state.busy = false;
+}
+
+async function onRefund(state: PageState) {
+  state.error = "";
+  state.busy = true;
+
+  try {
+    state.detail = await refundOrder(state.detail.order.id, state.restock);
+    state.confirmRefund = false;
+    state.notice = state.restock ? "Refunded, and the items are back in stock." : "Refunded.";
+  } catch (err: any) {
+    state.error = err.message;
+  }
+
+  state.busy = false;
+}
+
+function when(d: Date | null): string {
+  return d ? d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+}
+
+<html lang="en" class="page-admin-order" (
+  initial: OrderDetail,
+  private state: PageState = {
+    detail: initial,
+    ship: { carrier: "USPS", trackingNumber: "" },
+    errors: {},
+    error: "",
+    confirmRefund: false,
+    restock: true,
+    busy: false,
+    notice: "",
+  },
+)>
+  <head>
+    <title>Order #{initial.order.number} · Millrow admin</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <AdminLayout section="orders">
+      <a class="order-back" href="/admin/orders">← All orders</a>
+
+      <div class="admin-title row">
+        <div class="stack is-xs">
+          <h1>Order #{state.detail.order.number}</h1>
+          <span class="muted text-sm">Placed {when(state.detail.order.createdAt)} · <a href={`/order/${state.detail.order.id}`} target="_blank">Customer view ↗</a></span>
+        </div>
+        <span class={["pill", statusIntent(state.detail.order.status)]}><span class="pill-dot"></span>{statusLabel(state.detail.order.status)}</span>
+      </div>
+
+      <p e:if={state.notice} class="callout is-success" role="status">{state.notice}</p>
+      <p e:if={state.error} class="callout is-danger" role="alert">{state.error}</p>
+
+      <div class="admin-order-grid">
+        <div class="stack">
+          <section class="card">
+            <div class="card-head"><h2>Items</h2></div>
+            <table class="admin-table">
+              <tbody>
+                <tr e:for={item of state.detail.items}>
+                  <td>{item.productName}<br><span class="muted">{item.variantLabel}</span></td>
+                  <td class="num muted">{money(item.unitCents)} × {item.quantity}</td>
+                  <td class="num">{money(item.unitCents * item.quantity)}</td>
+                </tr>
+              </tbody>
+              <tbody class="order-totals">
+                <tr><td colspan="2">Subtotal</td><td class="num">{money(state.detail.order.subtotalCents)}</td></tr>
+                <tr><td colspan="2">Shipping</td><td class="num">{state.detail.order.shippingCents === 0 ? "Free" : money(state.detail.order.shippingCents)}</td></tr>
+                <tr class="is-total"><td colspan="2">Total</td><td class="num">{money(state.detail.order.totalCents)}</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>Timeline</h2></div>
+            <div class="card-body">
+              <ul class="timeline stack">
+                <li><span class="when">{when(state.detail.order.createdAt)}</span><span>Order placed</span></li>
+                <li e:if={state.detail.order.paidAt}><span class="when">{when(state.detail.order.paidAt)}</span><span>Paid {money(state.detail.order.totalCents)}{state.detail.order.paymentIntentId ? " by card through Stripe" : ""}</span></li>
+                <li e:if={state.detail.order.shippedAt}><span class="when">{when(state.detail.order.shippedAt)}</span><span>Shipped with {state.detail.order.carrier}, <a href={carrierUrl(state.detail.order.carrier, state.detail.order.trackingNumber)} target="_blank" rel="noopener">{state.detail.order.trackingNumber}</a></span></li>
+                <li e:if={state.detail.order.refundedAt}><span class="when">{when(state.detail.order.refundedAt)}</span><span>Refunded</span></li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section e:if={state.detail.order.status === "paid"} class="card">
+            <div class="card-head"><h2>Ship this order</h2></div>
+            <div class="card-body">
+              <form class="ship-form" onsubmit={() => onShip(state)}>
+                <div class="field">
+                  <label for="carrier">Carrier</label>
+                  <select id="carrier" value={state.ship.carrier}>
+                    <option e:for={c of CARRIERS} value={c}>{c}</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="tracking">Tracking number</label>
+                  <input id="tracking" value={state.ship.trackingNumber} class={[state.errors.trackingNumber && "is-error"]} autocomplete="off" spellcheck={false}>
+                  <p e:if={state.errors.trackingNumber} class="error">{state.errors.trackingNumber?.[0]}</p>
+                </div>
+                <button type="submit" class="is-primary" disabled={state.busy}>Mark shipped and email the customer</button>
+              </form>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2>Customer</h2></div>
+            <div class="card-body stack is-sm">
+              <address>
+                <strong>{state.detail.order.name}</strong><br>
+                <a href={`mailto:${state.detail.order.email}`}>{state.detail.order.email}</a><br><br>
+                {state.detail.order.address1}<br>
+                <span e:if={state.detail.order.address2}>{state.detail.order.address2}<br></span>
+                {state.detail.order.city}, {state.detail.order.region} {state.detail.order.postalCode}
+              </address>
+            </div>
+          </section>
+
+          <section e:if={state.detail.order.status === "paid" || state.detail.order.status === "shipped"} class="card">
+            <div class="card-head"><h2>Refund</h2></div>
+            <div class="card-body stack is-sm">
+              <div e:if={!state.confirmRefund} class="stack is-sm">
+                <p class="text-sm muted">Refund the full {money(state.detail.order.totalCents)}{state.detail.order.paymentIntentId ? " to the customer's card" : ""}.</p>
+                <p><button type="button" class="is-danger is-sm" onclick={() => state.confirmRefund = true}>Refund order</button></p>
+              </div>
+              <div e:else class="refund-confirm stack is-sm">
+                <label><input type="checkbox" checked={state.restock}> Put the items back in stock</label>
+                <div class="cluster is-sm">
+                  <button type="button" class="is-danger is-sm" disabled={state.busy} onclick={() => onRefund(state)}>Refund {money(state.detail.order.totalCents)}</button>
+                  <button type="button" class="is-ghost is-sm" onclick={() => state.confirmRefund = false}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </AdminLayout>
+  </body>
+</html>

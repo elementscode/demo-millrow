@@ -1,0 +1,48 @@
+@import "#app/shared/styles/page.css";
+@import "#app/shared/styles/summary.css";
+
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1fr 22rem;
+  gap: var(--space-12);
+  align-items: start;
+}
+
+.cart-lines {
+  border-top: 1px solid var(--rule-soft);
+}
+
+.cart-lines > li {
+  padding-block: var(--space-5);
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.cart-qty {
+  gap: var(--space-1);
+}
+
+.cart-qty span {
+  min-width: 2rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-warning {
+  font-size: var(--text-sm);
+  color: var(--warning-ink);
+}
+
+.cart-empty {
+  padding-block: var(--space-16);
+  text-align: center;
+}
+
+.cart-loading {
+  min-height: 16rem;
+}
+
+@media (max-width: 56rem) {
+  .cart-layout {
+    grid-template-columns: 1fr;
+  }
+}
