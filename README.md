@@ -1,24 +1,12 @@
-![Millrow, an online store for a small coffee roaster built with Elements: the owner's sales dashboard with revenue for today, this week and this month, orders ready to ship, a 14-day revenue chart, top products and the latest orders.](https://elements.dev/demos/01a0f39d-0703-7846-ac3c-a5b583a5727c/poster?v=1cb43026fde4)
+![An online store with card checkout, built by Claude Code on Elements: the owner's sales dashboard with revenue for today, this week and this month, orders ready to ship, a 14-day revenue chart, top products and the latest orders.](https://elements.dev/demos/01a0f39d-0703-7846-ac3c-a5b583a5727c/poster?v=1cb43026fde4)
 
-# Millrow
+# An online store with card checkout, built by Claude Code on Elements
 
-> A demo app built with [Elements](https://elements.dev).
+> Millrow is a full-stack app built with Claude Code on Elements.
 
 Coffee by collection with size and grind variants, guest checkout by card, order and shipping emails with tracking, and live stock and sales for the owner.
 
-**Demo:** [Millrow](https://elements.dev/demos/01a0f39d-0703-7846-ac3c-a5b583a5727c)
-
-## Agent specs
-
-- **Agent:** Claude Code, Opus 5.5 Medium
-- **Time:** 29 min
-- **Cost:** $9.35 at API rates, September 2026
-
-## Get started
-
-```bash
-elements create millrow -scaffold=elementscode/demo-millrow
-```
+[Run this app on your machine](https://elements.dev/demos/01a0f39d-0703-7846-ac3c-a5b583a5727c). Use this demo as inspiration, or as the starting point for your own app. Your agent creates a new app with this one as the scaffold, and you prompt it to add whatever features you want.
 
 ## Payments
 
@@ -45,8 +33,6 @@ in the Stripe dashboard.
 
 Millrow needed a catalog with size and grind variants, a cart, card checkout, order emails, and stock that updates while people shop. Each of those is a part of Elements, so the agent spent its 29 minutes on the store itself.
 
-### What Elements gave the app
-
 - **Live stock and orders.** Product variants and orders are LiveTables. An open product page shows "Only 4 left" the moment stock changes, the owner's orders list fills in as orders arrive, and a channel pushes each new sale to the sales dashboard.
 
 - **Card checkout.** Checkout prices the cart on the server, holds the stock and sends the shopper to Stripe with the store's own prices. The order is recorded when the shopper returns and again when Stripe's webhook arrives, once either way. Without a Stripe key, the same button opens a test checkout inside the app that pays through the same code, and in production the app registers its own webhook on the first checkout.
@@ -59,33 +45,6 @@ Millrow needed a catalog with size and grind variants, a cart, card checkout, or
 
 - **Sessions and roles.** Every admin page and server call shares one guard on the signed-in owner's role.
 
-### What the project server gave the agent
+## Why Elements
 
-The project server runs alongside the agent and answers as soon as a file is saved: it type-checks the templates, TypeScript and SQL, applies migrations and reruns the tests, so every question came back right away and the agent kept building.
-
-### What shipped
-
-The app type-checks with zero errors and all 25 tests pass. Every page works on desktop and phone. A real sandbox payment went through Stripe end to end.
-
-## Seed data and demo account
-
-The seed loads in every environment: three collections (Single Origin, Blends,
-Gear), twelve products with 59 size and grind variants and two photos each,
-and twenty orders from the last few weeks, paid, shipped and refunded. The
-product photos are SVG illustrations; replace them from each product's edit
-page.
-
-The store owner signs in at `/signin`, and the sign-in page shows the login.
-
-| Email                | Password        | Role  |
-| -------------------- | --------------- | ----- |
-| admin@millrow.coffee | `millrow-admin` | admin |
-
-Shoppers do not need an account. `/orders` finds an order by email and order
-number.
-
-**Demo:** [Millrow](https://elements.dev/demos/01a0f39d-0703-7846-ac3c-a5b583a5727c)
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Elements is an integrated full-stack app framework and a project server. The project server checks the agent's work as it builds: it type-checks the server and browser code, analyzes the program, applies migrations and runs the tests, then reports the results to the agent. A security mistake, such as calling a server-only function from the browser, is a compile error. The agent reads the report and fixes its own mistakes before it tells you a feature is done. The same checks run on every feature you ask for next.
